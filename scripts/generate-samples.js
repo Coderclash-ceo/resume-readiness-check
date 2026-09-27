@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const outDir = path.join(__dirname, '../public/sample-files');
@@ -9,35 +10,33 @@ if (!fs.existsSync(outDir)) {
   fs.mkdirSync(outDir, { recursive: true });
 }
 
-function createTextPdf(lines) {
-  // Simple valid PDF-1.4 text generator
-  const content = 'BT /F1 11 Tf 40 750 Td 14 TL ' + lines.map(l => {
-    const escaped = l.replace(/[()\\\\]/g, ' ');
-    return `(${escaped}) '`;
-  }).join(' ') + ' ET';
+async function createStandardPdf(lines) {
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const page = pdfDoc.addPage([600, 850]);
+  let y = 800;
 
-  const streamLen = content.length;
-  let pdf = '%PDF-1.4\n';
-  const offsets = [];
+  for (const line of lines) {
+    if (y < 50) break;
+    const isHeading = line.startsWith('ALEX') || line.startsWith('JORDAN') || 
+                      line === 'SUMMARY' || line === 'TECHNICAL SKILLS' || 
+                      line === 'EXPERIENCE' || line === 'PROJECTS' || line === 'SKILLS';
 
-  function addObj(str) {
-    offsets.push(pdf.length);
-    pdf += str + '\n';
+    if (line.trim()) {
+      page.drawText(line, {
+        x: 40,
+        y: y,
+        size: isHeading ? 11 : 9.5,
+        font: isHeading ? boldFont : font,
+        color: rgb(0.1, 0.1, 0.1),
+      });
+    }
+    y -= isHeading ? 18 : 14;
   }
 
-  addObj('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj');
-  addObj('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj');
-  addObj('3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj');
-  addObj('4 0 obj\n<< /Length ' + streamLen + ' >>\nstream\n' + content + '\nendstream\nendobj');
-  addObj('5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj');
-
-  const startXref = pdf.length;
-  pdf += 'xref\n0 6\n0000000000 65535 f \n';
-  for (const o of offsets) {
-    pdf += String(o).padStart(10, '0') + ' 00000 n \n';
-  }
-  pdf += 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + startXref + '\n%%EOF\n';
-  return Buffer.from(pdf);
+  const pdfBytes = await pdfDoc.save();
+  return Buffer.from(pdfBytes);
 }
 
 // 1. Alex Morgan (Pass)
@@ -97,7 +96,14 @@ const jordanLines = [
   '- Implemented interactive UI components with plain JavaScript.'
 ];
 
-fs.writeFileSync(path.join(outDir, 'alex-morgan-senior-fullstack.pdf'), createTextPdf(alexLines));
-fs.writeFileSync(path.join(outDir, 'jordan-lee-junior-frontend.pdf'), createTextPdf(jordanLines));
+async function generate() {
+  const alexPdf = await createStandardPdf(alexLines);
+  const jordanPdf = await createStandardPdf(jordanLines);
 
-console.log('Sample PDF resumes generated successfully in public/sample-files/');
+  fs.writeFileSync(path.join(outDir, 'alex-morgan-senior-fullstack.pdf'), alexPdf);
+  fs.writeFileSync(path.join(outDir, 'jordan-lee-junior-frontend.pdf'), jordanPdf);
+
+  console.log('Generated spec-compliant PDFs with pdf-lib successfully!');
+}
+
+generate().catch(console.error);
