@@ -14,10 +14,36 @@ export const config = {
  * Extracts raw text from PDF buffer using pdf-parse
  */
 async function extractTextFromPdf(buffer) {
+  // Primary extractor: pdf2json (robust, modern, zero-DOM dependencies for serverless)
+  try {
+    const PDFParser = (await import('pdf2json')).default;
+    const text = await new Promise((resolve, reject) => {
+      const parser = new PDFParser(null, 1);
+      parser.on('pdfParser_dataReady', () => {
+        try {
+          const raw = parser.getRawTextContent() || '';
+          resolve(decodeURIComponent(raw));
+        } catch {
+          resolve(parser.getRawTextContent() || '');
+        }
+      });
+      parser.on('pdfParser_dataError', errData => {
+        reject(new Error(errData?.parserError || 'PDF parsing failed'));
+      });
+      parser.parseBuffer(buffer);
+    });
+
+    if (text && text.trim().length > 20) {
+      return text;
+    }
+  } catch (err) {
+    console.warn('pdf2json attempt warning:', err.message);
+  }
+
+  // Fallback extractor: pdf-parse
   try {
     let pdfFn;
     try {
-      // Direct import of lib bypasses pdf-parse's debug test file check
       const mod = await import('pdf-parse/lib/pdf-parse.js');
       pdfFn = mod.default || mod;
     } catch {
@@ -27,7 +53,7 @@ async function extractTextFromPdf(buffer) {
 
     if (typeof pdfFn === 'function') {
       const data = await pdfFn(buffer);
-      return data.text || '';
+      if (data.text) return data.text;
     }
     if (pdfFn && pdfFn.PDFParse) {
       const parser = new pdfFn.PDFParse({ data: buffer });
@@ -35,11 +61,11 @@ async function extractTextFromPdf(buffer) {
       await parser.destroy?.();
       return typeof res === 'string' ? res : (res?.text || '');
     }
-    throw new Error('Unable to initialize pdf-parse');
-  } catch (err) {
-    console.error('PDF extraction error:', err);
-    throw new Error(`Failed to extract text from PDF: ${err.message}`);
+  } catch (err2) {
+    console.warn('pdf-parse fallback warning:', err2.message);
   }
+
+  throw new Error('Could not extract readable text from this PDF file.');
 }
 
 /**
