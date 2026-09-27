@@ -20,12 +20,8 @@ async function extractTextFromPdf(buffer) {
     const text = await new Promise((resolve, reject) => {
       const parser = new PDFParser(null, 1);
       parser.on('pdfParser_dataReady', () => {
-        try {
-          const raw = parser.getRawTextContent() || '';
-          resolve(decodeURIComponent(raw));
-        } catch {
-          resolve(parser.getRawTextContent() || '');
-        }
+        const raw = parser.getRawTextContent() || '';
+        resolve(raw);
       });
       parser.on('pdfParser_dataError', errData => {
         reject(new Error(errData?.parserError || 'PDF parsing failed'));
@@ -150,10 +146,12 @@ function parseMultipartRequest(req) {
     busboy.on('error', err => reject(err));
 
     // Handle stream piping in Node or pre-buffered body
-    if (typeof req.pipe === 'function') {
-      req.pipe(busboy);
-    } else if (req.body && Buffer.isBuffer(req.body)) {
+    if (req.body && Buffer.isBuffer(req.body)) {
       busboy.end(req.body);
+    } else if (req.body && typeof req.body === 'string') {
+      busboy.end(Buffer.from(req.body));
+    } else if (typeof req.pipe === 'function') {
+      req.pipe(busboy);
     } else {
       reject(new Error('Malformed request stream'));
     }
