@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import Busboy from 'busboy';
 import mammoth from 'mammoth';
 import rubrics, { getRubricById } from '../src/rubrics/index.js';
@@ -111,6 +112,7 @@ function parseMultipartRequest(req) {
     let fileBuffer = null;
     let fileInfo = null;
     let fileLimitHit = false;
+    const filePromises = [];
 
     busboy.on('field', (name, val) => {
       fields[name] = val;
@@ -121,22 +123,27 @@ function parseMultipartRequest(req) {
       fileInfo = { filename, mimeType };
       const chunks = [];
 
-      fileStream.on('data', chunk => {
-        chunks.push(chunk);
-      });
+      const p = new Promise(fileDone => {
+        fileStream.on('data', chunk => {
+          chunks.push(chunk);
+        });
 
-      fileStream.on('limit', () => {
-        fileLimitHit = true;
-      });
+        fileStream.on('limit', () => {
+          fileLimitHit = true;
+        });
 
-      fileStream.on('end', () => {
-        if (!fileLimitHit) {
-          fileBuffer = Buffer.concat(chunks);
-        }
+        fileStream.on('end', () => {
+          if (!fileLimitHit) {
+            fileBuffer = Buffer.concat(chunks);
+          }
+          fileDone();
+        });
       });
+      filePromises.push(p);
     });
 
-    busboy.on('finish', () => {
+    busboy.on('finish', async () => {
+      await Promise.all(filePromises);
       if (fileLimitHit) {
         return reject(new Error('File exceeds the 5MB size limit. Please upload a smaller resume.'));
       }
@@ -325,27 +332,39 @@ async function callLlmEvaluator(prompt, rubric) {
   // 2. Google Gemini (if key starts with AIza or AQ or GEMINI_API_KEY is present)
   if (apiKey.startsWith('AIza') || apiKey.startsWith('AQ') || process.env.GEMINI_API_KEY) {
     const geminiKey = (process.env.GEMINI_API_KEY || apiKey).trim();
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.1
+    const candidateModels = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-3.8-flash'];
+    let lastError = null;
+
+    for (const model of candidateModels) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.1
+            }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+          console.log(`[ResumeCheck] Successfully evaluated with Google Gemini (${model})`);
+          return { ...JSON.parse(rawText), provider: `Google Gemini (${model})` };
+        } else {
+          const errText = await response.text();
+          console.warn(`[ResumeCheck] Gemini model ${model} status ${response.status}: ${errText.slice(0, 150)}`);
+          lastError = new Error(`Gemini (${model}) ${response.status}: ${errText}`);
         }
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Gemini API error (${response.status}): ${errText}`);
+      } catch (err) {
+        lastError = err;
+      }
     }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-    return { ...JSON.parse(rawText), provider: 'Google Gemini' };
+    throw lastError || new Error('All Gemini model calls failed');
   }
 
   // 3. OpenAI (if key starts with sk- or OPENAI_API_KEY is present)
