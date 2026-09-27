@@ -1,0 +1,16 @@
+{
+  "id": "frontend-engineering",
+  "role": "Frontend Engineering",
+  "threshold": 70,
+  "description": "Focuses on modern UI engineering, React ecosystems, state management, CSS styling, performance, and accessibility.",
+  "skills": [
+    { "name": "JavaScript / TypeScript", "weight": 20, "synonyms": ["JS", "ES6", "TypeScript", "TS"] },
+    { "name": "React", "weight": 20, "synonyms": ["React.js", "ReactJS", "Next.js"] },
+    { "name": "HTML5 & Modern CSS", "weight": 15, "synonyms": ["Tailwind", "CSS3", "Sass", "Responsive Design", "Flexbox", "Grid"] },
+    { "name": "State Management", "weight": 10, "synonyms": ["Redux", "Zustand", "Context API", "React Query", "TanStack"] },
+    { "name": "REST / API Integration", "weight": 10, "synonyms": ["RESTful", "Axios", "fetch", "GraphQL"] },
+    { "name": "Frontend Testing", "weight": 10, "synonyms": ["Jest", "Vitest", "React Testing Library", "Cypress", "Playwright"] },
+    { "name": "Web Performance & SEO", "weight": 10, "synonyms": ["Core Web Vitals", "Lighthouse", "SEO", "lazy loading", "code splitting"] },
+    { "name": "Git & Version Control", "weight": 5, "synonyms": ["GitHub", "GitLab", "branching"] }
+  ]
+}

@@ -1,0 +1,32 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 799 >>
+stream
+BT /F1 11 Tf 40 750 Td 14 TL (JORDAN LEE - JUNIOR FRONTEND DEVELOPER) ' (Austin, TX | jordan.lee@email.com) ' () ' (SUMMARY) ' (Junior frontend developer passionate about responsive design and UI.) ' (Looking to expand into full-stack engineering roles.) ' () ' (SKILLS) ' (- JavaScript  ES6 , HTML5, CSS3, React) ' (- Git, GitHub, VS Code, Figma) ' (- Responsive web design and UI components) ' () ' (PROJECTS) ' (Recipe Finder App  2024 ) ' (- Built an interactive single-page recipe finder using React.) ' (- Styled responsive layouts with CSS grid and flexbox.) ' (- Tracked commits and branches using Git on GitHub.) ' () ' (Personal Portfolio  2023 ) ' (- Created personal developer portfolio with semantic HTML and CSS.) ' (- Implemented interactive UI components with plain JavaScript.) ' ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001091 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1161
+%%EOF

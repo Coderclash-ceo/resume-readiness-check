@@ -1,0 +1,17 @@
+{
+  "id": "web-development",
+  "role": "Web Development",
+  "threshold": 70,
+  "description": "Evaluates foundational and modern full-stack web development competencies across frontend, backend, databases, and deployment.",
+  "skills": [
+    { "name": "JavaScript", "weight": 15, "synonyms": ["JS", "ES6", "TypeScript", "TS"] },
+    { "name": "Node.js", "weight": 15, "synonyms": ["NodeJS", "Node", "Express", "NestJS"] },
+    { "name": "Java", "weight": 10, "synonyms": ["Spring", "Spring Boot", "JVM"] },
+    { "name": "React", "weight": 15, "synonyms": ["ReactJS", "React.js", "Next.js"] },
+    { "name": "SQL / Databases", "weight": 10, "synonyms": ["MySQL", "PostgreSQL", "MongoDB", "NoSQL", "SQLite", "Prisma"] },
+    { "name": "Git / Version Control", "weight": 10, "synonyms": ["GitHub", "GitLab", "Bitbucket", "version control"] },
+    { "name": "REST APIs", "weight": 10, "synonyms": ["API integration", "RESTful", "endpoints", "API development"] },
+    { "name": "Deployment", "weight": 10, "synonyms": ["Vercel", "AWS", "hosting", "Docker", "Netlify", "Heroku", "CI/CD"] },
+    { "name": "Testing", "weight": 5, "synonyms": ["unit tests", "Jest", "QA", "Cypress", "Playwright", "Mocha", "integration tests"] }
+  ]
+}
