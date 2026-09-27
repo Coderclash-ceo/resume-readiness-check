@@ -1,0 +1,14 @@
+{
+  "id": "backend-developer",
+  "role": "Backend Developer",
+  "threshold": 70,
+  "description": "Evaluates server-side architecture, database modeling, RESTful microservices, cloud deployments, and backend testing standards.",
+  "skills": [
+    { "name": "Java", "weight": 20, "synonyms": ["Spring", "Spring Boot", "JVM", "Java EE"] },
+    { "name": "Node.js", "weight": 20, "synonyms": ["NodeJS", "Express", "NestJS", "Fastify", "Python"] },
+    { "name": "SQL / Databases", "weight": 20, "synonyms": ["PostgreSQL", "MySQL", "MongoDB", "NoSQL", "Redis", "Prisma", "Hibernate"] },
+    { "name": "REST APIs & Architecture", "weight": 15, "synonyms": ["API design", "RESTful", "microservices", "GraphQL", "endpoints"] },
+    { "name": "Cloud & Deployment", "weight": 15, "synonyms": ["Docker", "AWS", "Kubernetes", "CI/CD", "Linux", "hosting"] },
+    { "name": "Backend Testing", "weight": 10, "synonyms": ["JUnit", "Jest", "unit tests", "integration tests", "Mocha"] }
+  ]
+}

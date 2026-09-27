@@ -1,6 +1,7 @@
 {
   "id": "frontend-engineering",
-  "role": "Frontend Engineering",
+  "role": "Frontend Developer",
+
   "threshold": 70,
   "description": "Focuses on modern UI engineering, React ecosystems, state management, CSS styling, performance, and accessibility.",
   "skills": [

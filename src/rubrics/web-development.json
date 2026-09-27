@@ -1,6 +1,7 @@
 {
   "id": "web-development",
-  "role": "Web Development",
+  "role": "Full-Stack Developer",
+
   "threshold": 70,
   "description": "Evaluates foundational and modern full-stack web development competencies across frontend, backend, databases, and deployment.",
   "skills": [

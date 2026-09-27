@@ -1,36 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
-  HelpCircle, 
   ArrowLeft, 
   Sparkles, 
-  Share2, 
   Printer, 
   Lightbulb, 
   ArrowRight,
-  ShieldAlert,
   Flame,
-  FileCheck2,
-  ExternalLink
+  Target,
+  Layers,
+  ChevronRight,
+  Award,
+  UserCheck,
+  FileText
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 export default function ResultScreen({ result, onReset }) {
-  const [activeFilter, setActiveFilter] = useState(result.passed ? 'matched' : 'all');
+  // Support switching between evaluated roles right on the result screen
+  const [activeRoleId, setActiveRoleId] = useState(result.roleId || 'web-development');
+  const [activeFilter, setActiveFilter] = useState('all');
 
-  useEffect(() => {
-    if (result.passed) {
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (e) {
-        // Fallback if canvas-confetti is not loaded
-      }
-    }
-  }, [result.passed]);
+  const allEvals = result.allRoleEvaluations || {};
+  const currentEval = allEvals[activeRoleId] || result;
 
   const { 
     role, 
@@ -42,11 +34,27 @@ export default function ResultScreen({ result, onReset }) {
     matched = [], 
     missing = [], 
     stats = {}, 
-    provider 
-  } = result;
+    provider,
+    bestFit,
+    roleSuitability = [],
+    benchmarkInfo
+  } = { ...result, ...currentEval };
+
+  useEffect(() => {
+    if (passed) {
+      try {
+        confetti({
+          particleCount: 75,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch (e) {
+        // Fallback if canvas-confetti is not loaded
+      }
+    }
+  }, [passed, activeRoleId]);
 
   const totalSkills = matched.length + missing.length;
-  const strokeDashoffset = 100 - score;
 
   const filteredSkills = () => {
     if (activeFilter === 'matched') {
@@ -55,12 +63,10 @@ export default function ResultScreen({ result, onReset }) {
     if (activeFilter === 'missing') {
       return missing.map(item => ({ ...item, isMatched: false }));
     }
-    // 'all'
-    const combined = [
+    return [
       ...matched.map(item => ({ ...item, isMatched: true })),
       ...missing.map(item => ({ ...item, isMatched: false }))
     ];
-    return combined;
   };
 
   const handlePrint = () => {
@@ -69,7 +75,123 @@ export default function ResultScreen({ result, onReset }) {
 
   return (
     <div className="result-screen">
-      {/* Top Result Banner */}
+      {/* Top Navigation Bar with Back Button */}
+      <div className="result-nav-bar">
+        <button 
+          type="button" 
+          className="btn-back-nav" 
+          onClick={onReset}
+          id="btn-back-to-upload"
+        >
+          <ArrowLeft size={16} />
+          <span>← Back to Resume Upload / Select Another Profile</span>
+        </button>
+
+        <div className="benchmark-tag">
+          <Target size={14} style={{ color: 'var(--accent-cyan)' }} />
+          <span>Active Rubric: <strong>{role}</strong> ({threshold}% Target)</span>
+        </div>
+      </div>
+
+      {/* Evaluated Resume Profile & Benchmark Context */}
+      <div className="candidate-context-card">
+        <div className="candidate-context-info">
+          <div className="candidate-avatar-icon">
+            <UserCheck size={24} />
+          </div>
+          <div>
+            <div className="candidate-badge-tag">Evaluated Resume</div>
+            <h2 className="candidate-display-title">
+              {stats.fileName ? stats.fileName.replace(/\.(pdf|docx)$/i, '').replace(/[-_]/g, ' ') : 'Candidate Profile'}
+            </h2>
+            <div className="candidate-sub-stats">
+              <span>{stats.words || 0} words analyzed</span>
+              <span>•</span>
+              <span>{stats.characters || 0} characters</span>
+              <span>•</span>
+              <span>Evaluated by: {provider || 'Skills Engine'}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="benchmark-context-info">
+          <div className="benchmark-sub-tag">Checking Against Industry Benchmark</div>
+          <div className="benchmark-title-bold">
+            <Target size={16} style={{ color: 'var(--accent-cyan)' }} />
+            <span>{role} Competencies Checklist</span>
+          </div>
+          <p className="benchmark-desc-text">
+            Comparing verified evidence against the <strong>{threshold}% readiness threshold</strong> across {totalSkills} required technical skills.
+          </p>
+        </div>
+      </div>
+
+      {/* Role Suitability & Best Match Matrix */}
+      {roleSuitability.length > 0 && (
+        <div className="role-fit-matrix-box">
+          <div className="best-fit-banner">
+            <div className="best-fit-icon">
+              <Award size={26} />
+            </div>
+            <div className="best-fit-text">
+              <div className="best-fit-label">
+                <Sparkles size={14} />
+                <span>Career Fit & Role Suitability Assessment</span>
+              </div>
+              <h3 className="best-fit-title">
+                Best Fit: <span className="highlight-text">{bestFit?.role}</span> ({bestFit?.score}% Alignment)
+              </h3>
+              <p className="best-fit-desc">
+                {bestFit?.recommendation || `Your resume demonstrates strongest alignment with ${bestFit?.role}.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="matrix-instruction">
+            <span>Role Qualification Breakdown (Click any role card below to inspect its detailed skills checklist):</span>
+          </div>
+
+          <div className="role-cards-grid">
+            {roleSuitability.map(r => {
+              const isSelected = activeRoleId === r.roleId;
+              const isPassing = r.passed;
+
+              return (
+                <div 
+                  key={r.roleId} 
+                  className={`role-comparison-card ${isSelected ? 'selected' : ''} ${isPassing ? 'pass-card' : ''}`}
+                  onClick={() => {
+                    setActiveRoleId(r.roleId);
+                    setActiveFilter('all');
+                  }}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="role-card-header">
+                    <span className="role-name-text">{r.role}</span>
+                    <span className={`role-pill ${isPassing ? 'pass' : 'needswork'}`}>
+                      {isPassing ? '✓ Highly Suitable' : 'Needs Work'}
+                    </span>
+                  </div>
+
+                  <div className="role-score-display">
+                    <span className="role-big-score">{r.score}%</span>
+                    <span className="role-threshold-sub">/ {r.threshold}% target</span>
+                  </div>
+
+                  <div className="role-card-footer">
+                    <span className="role-active-indicator">
+                      {isSelected ? '● Currently Inspecting' : 'Click to inspect checklist →'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Active Role Result Header Card */}
       <div className={`result-header-card ${passed ? 'pass' : 'needswork'}`}>
         <div className="result-top-grid">
           {/* Circular Score Gauge */}
@@ -96,12 +218,12 @@ export default function ResultScreen({ result, onReset }) {
               {passed ? (
                 <>
                   <CheckCircle2 size={16} />
-                  <span>Threshold Cleared • Ready to Proceed</span>
+                  <span>{role} Standard Cleared • Ready to Apply</span>
                 </>
               ) : (
                 <>
                   <Flame size={16} />
-                  <span>Actionable Roadmap • Needs Work ({threshold - score} pts to target)</span>
+                  <span>{role} Roadmap • {threshold - score} pts to clearance</span>
                 </>
               )}
             </div>
@@ -115,9 +237,9 @@ export default function ResultScreen({ result, onReset }) {
                   <button 
                     type="button" 
                     className="btn-cta-pass"
-                    onClick={() => alert('Proceeding to technical interview scheduler / application submission!')}
+                    onClick={() => alert(`Proceeding with application for ${role}!`)}
                   >
-                    <span>Proceed to Technical Stage</span>
+                    <span>Proceed to Technical Round</span>
                     <ArrowRight size={17} />
                   </button>
                   <button type="button" className="btn-action-outline" onClick={handlePrint}>
@@ -137,7 +259,7 @@ export default function ResultScreen({ result, onReset }) {
                   </button>
                   <button type="button" className="btn-action-outline" onClick={onReset}>
                     <ArrowLeft size={16} />
-                    <span>Test Another Resume</span>
+                    <span>Upload Another Resume</span>
                   </button>
                 </>
               )}
@@ -149,9 +271,9 @@ export default function ResultScreen({ result, onReset }) {
       {/* Skills Breakdown Header & Filter Tabs */}
       <div className="skills-section-header">
         <div>
-          <h3>Skills & Evidence Breakdown</h3>
+          <h3>{role} Competencies Checklist</h3>
           <p style={{ fontSize: '0.86rem', color: 'var(--text-muted)' }}>
-            Comparing resume evidence against the <strong>{role}</strong> competency standard.
+            Comparing verified resume evidence against {role} requirements.
           </p>
         </div>
 
@@ -236,27 +358,12 @@ export default function ResultScreen({ result, onReset }) {
       </div>
 
       {/* Metadata & Audit Bar */}
-      <div 
-        style={{ 
-          marginTop: '2.5rem', 
-          padding: '1.25rem', 
-          background: 'rgba(15, 23, 42, 0.45)', 
-          borderRadius: '12px', 
-          border: '1px solid var(--border-subtle)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          fontSize: '0.82rem',
-          color: 'var(--text-dim)'
-        }}
-      >
+      <div className="audit-footer-bar">
         <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
           <span><strong>File:</strong> {stats.fileName || 'Document'}</span>
-          <span><strong>Characters:</strong> {stats.characters || 0}</span>
-          <span><strong>Words:</strong> {stats.words || 0}</span>
-          <span><strong>Engine:</strong> {provider || 'Rubric Matcher'}</span>
+          <span><strong>Length:</strong> {stats.characters || 0} characters</span>
+          <span><strong>Words:</strong> {stats.words || 0} words</span>
+          <span><strong>Evaluator:</strong> {provider || 'Rubric Matcher'}</span>
         </div>
         <div>
           <button 
@@ -265,7 +372,7 @@ export default function ResultScreen({ result, onReset }) {
             style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}
             onClick={onReset}
           >
-            Check Another File
+            ← Back to Upload
           </button>
         </div>
       </div>

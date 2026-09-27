@@ -1,7 +1,7 @@
 import Busboy from 'busboy';
 import mammoth from 'mammoth';
-import 'dotenv/config';
-import { getRubricById } from '../src/rubrics/index.js';
+import rubrics, { getRubricById } from '../src/rubrics/index.js';
+
 
 // Vercel serverless configuration: disable automatic body parsing so Busboy streams multipart data
 export const config = {
@@ -516,80 +516,161 @@ export default async function handler(req, res) {
       }
     });
 
-    // Server-side weighted scoring: sum weights of verified matched skills
-    let computedScore = 0;
-    const finalMatched = [];
-    const finalMissing = [];
+    // Evaluates any rubric using the verified model output and heuristic scan
+    function evaluateRubric(targetRubric) {
+      let computedScore = 0;
+      const matched = [];
+      const missing = [];
 
-    rubric.skills.forEach(skill => {
-      const skillNameLower = skill.name.toLowerCase().trim();
-      let isMatched = false;
-      let evidence = '';
+      targetRubric.skills.forEach(skill => {
+        const skillNameLower = skill.name.toLowerCase().trim();
+        let isMatched = false;
+        let evidence = '';
 
-      // Check direct match or synonym match from model output
-      if (matchedSkillsMap.has(skillNameLower)) {
-        isMatched = true;
-        evidence = matchedSkillsMap.get(skillNameLower);
-      } else {
-        // Also check if any synonym was matched
-        for (const [key, ev] of matchedSkillsMap.entries()) {
-          if (skill.synonyms && skill.synonyms.some(s => s.toLowerCase() === key)) {
-            isMatched = true;
-            evidence = ev;
-            break;
+        // 1. Direct or synonym match from model output
+        if (matchedSkillsMap.has(skillNameLower)) {
+          isMatched = true;
+          evidence = matchedSkillsMap.get(skillNameLower);
+        } else {
+          for (const [key, ev] of matchedSkillsMap.entries()) {
+            if (skill.synonyms && skill.synonyms.some(s => s.toLowerCase() === key)) {
+              isMatched = true;
+              evidence = ev;
+              break;
+            }
           }
         }
-      }
 
-      if (isMatched) {
-        computedScore += skill.weight;
-        finalMatched.push({
-          skill: skill.name,
-          weight: skill.weight,
-          evidence: evidence || `Clear evidence of ${skill.name} found in resume projects or experience.`
-        });
-      } else {
-        let tip = missingSkillsMap.get(skillNameLower) || '';
-        if (!tip) {
-          tip = generateConstructiveTip(skill.name, rubric.role);
+        // 2. Direct regex text scan fallback
+        if (!isMatched) {
+          const searchTerms = [skill.name, ...(skill.synonyms || [])];
+          const lowerText = cleanedText.toLowerCase();
+          for (const term of searchTerms) {
+            const cleanTerm = term.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${cleanTerm}\\b`, 'i');
+            const matchIndex = lowerText.search(regex);
+            if (matchIndex !== -1) {
+              isMatched = true;
+              const start = Math.max(0, matchIndex - 30);
+              const end = Math.min(cleanedText.length, matchIndex + term.length + 80);
+              let snippet = cleanedText.slice(start, end).replace(/\s+/g, ' ').trim();
+              if (start > 0) snippet = '...' + snippet;
+              if (end < cleanedText.length) snippet = snippet + '...';
+              evidence = snippet;
+              break;
+            }
+          }
         }
-        finalMissing.push({
-          skill: skill.name,
-          weight: skill.weight,
-          tip
-        });
-      }
+
+        if (isMatched) {
+          computedScore += skill.weight;
+          matched.push({
+            skill: skill.name,
+            weight: skill.weight,
+            evidence: evidence || `Clear evidence of ${skill.name} found in resume projects or experience.`
+          });
+        } else {
+          let tip = missingSkillsMap.get(skillNameLower) || '';
+          if (!tip) {
+            tip = generateConstructiveTip(skill.name, targetRubric.role);
+          }
+          missing.push({
+            skill: skill.name,
+            weight: skill.weight,
+            tip
+          });
+        }
+      });
+
+      computedScore = Math.min(100, Math.round(computedScore));
+      const passed = computedScore >= targetRubric.threshold;
+
+      const constructiveHeadline = passed
+        ? `Great work! Your resume clears the ${targetRubric.role} readiness standard (${computedScore}%).`
+        : `Your resume currently has ${computedScore}% alignment with the ${targetRubric.role} standard.`;
+
+      const summaryMessage = passed
+        ? `Your profile demonstrates verified experience in ${matched.length} of ${targetRubric.skills.length} core competencies. You are ready to proceed with confidence!`
+        : `You are currently ${targetRubric.threshold - computedScore} points away from the ${targetRubric.threshold}% benchmark. Adding specific evidence for ${missing.length} missing skill${missing.length > 1 ? 's' : ''} will elevate your candidacy.`;
+
+      return {
+        roleId: targetRubric.id,
+        role: targetRubric.role,
+        threshold: targetRubric.threshold,
+        score: computedScore,
+        passed,
+        headline: constructiveHeadline,
+        summary: summaryMessage,
+        matched,
+        missing,
+        matchedCount: matched.length,
+        missingCount: missing.length,
+        totalSkills: targetRubric.skills.length
+      };
+    }
+
+    // Evaluate across ALL available rubrics
+    const allRoleEvaluations = {};
+    const roleSuitability = [];
+
+    rubrics.forEach(r => {
+      const evaluation = evaluateRubric(r);
+      allRoleEvaluations[r.id] = evaluation;
+      roleSuitability.push({
+        roleId: r.id,
+        role: r.role,
+        score: evaluation.score,
+        threshold: r.threshold,
+        passed: evaluation.passed,
+        matchedCount: evaluation.matchedCount,
+        totalSkills: evaluation.totalSkills,
+        suitability: evaluation.passed
+          ? 'Highly Suitable (Ready to Apply)'
+          : evaluation.score >= 50
+            ? 'Moderate Fit (Needs 1-2 Skills)'
+            : 'Foundational (Needs Core Skills)'
+      });
     });
 
-    // Ensure score does not exceed 100
-    computedScore = Math.min(100, Math.round(computedScore));
-    const passed = computedScore >= rubric.threshold;
+    // Determine Best Fit Role
+    const sortedRoles = [...roleSuitability].sort((a, b) => b.score - a.score);
+    const bestFit = sortedRoles[0];
+    const bestFitRecommendation = bestFit.passed
+      ? `Your resume demonstrates verified qualifications for ${bestFit.role} (${bestFit.score}%). You meet the technical readiness standard and are ready to apply!`
+      : `Your strongest technical alignment is with ${bestFit.role} (${bestFit.score}%). Adding 1-2 targeted competencies will clear the threshold.`;
 
-    const constructiveHeadline = passed
-      ? `Great work! Your resume clears the ${rubric.role} readiness standard.`
-      : `You are on the right track! Here is your clear roadmap to clear the ${rubric.role} threshold.`;
-
-    const summaryMessage = passed
-      ? `Your profile demonstrated verified experience in ${finalMatched.length} of ${rubric.skills.length} core competencies (${computedScore}% score vs ${rubric.threshold}% target). You are ready to proceed!`
-      : `Your profile currently scores ${computedScore}% against the ${rubric.threshold}% benchmark. Adding specific project evidence for ${finalMissing.length} missing skill${finalMissing.length > 1 ? 's' : ''} will elevate your candidacy.`;
+    const activeEvaluation = allRoleEvaluations[roleId] || allRoleEvaluations['web-development'];
 
     return res.status(200).json({
-      role: rubric.role,
-      roleId: rubric.id,
-      threshold: rubric.threshold,
-      score: computedScore,
-      passed,
-      headline: constructiveHeadline,
-      summary: summaryMessage,
-      matched: finalMatched,
-      missing: finalMissing,
+      role: activeEvaluation.role,
+      roleId: activeEvaluation.roleId,
+      threshold: activeEvaluation.threshold,
+      score: activeEvaluation.score,
+      passed: activeEvaluation.passed,
+      headline: activeEvaluation.headline,
+      summary: activeEvaluation.summary,
+      matched: activeEvaluation.matched,
+      missing: activeEvaluation.missing,
+      bestFit: {
+        roleId: bestFit.roleId,
+        role: bestFit.role,
+        score: bestFit.score,
+        passed: bestFit.passed,
+        recommendation: bestFitRecommendation
+      },
+      roleSuitability,
+      allRoleEvaluations,
+      benchmarkInfo: {
+        title: 'Mid-to-Senior Engineering Hiring Benchmark',
+        description: 'Compared against explicit technical evidence in languages, frameworks, architecture, databases, and CI/CD.'
+      },
       stats: {
         fileName,
         characters: cleanedText.length,
         words: cleanedText.split(/\s+/).filter(Boolean).length,
-        evaluatedSkills: rubric.skills.length,
-        matchedCount: finalMatched.length,
-        missingCount: finalMissing.length
+        evaluatedSkills: activeEvaluation.totalSkills,
+        matchedCount: activeEvaluation.matchedCount,
+        missingCount: activeEvaluation.missingCount
       },
       provider: providerName,
       hasApiKey: Boolean(process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY)

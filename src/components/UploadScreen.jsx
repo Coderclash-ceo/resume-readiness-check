@@ -8,18 +8,14 @@ import {
   Sparkles, 
   ShieldCheck, 
   ArrowRight,
-  Download,
-  Layers,
-  ChevronRight
+  Layers
 } from 'lucide-react';
-import { SAMPLE_RESUMES } from '../data/samples.js';
 
 export default function UploadScreen({ 
   rubrics, 
   selectedRole, 
   onSelectRole, 
   onSubmitFile, 
-  onSubmitSample, 
   errorMessage 
 }) {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -259,61 +255,6 @@ export default function UploadScreen({
         <div className="privacy-reassurance">
           <ShieldCheck size={16} style={{ color: 'var(--accent-cyan)' }} />
           <span>Privacy Guaranteed: Your resume is processed strictly in-memory and is never persisted on disk or database.</span>
-        </div>
-
-        {/* Sample Resumes Section */}
-        <div className="samples-section">
-          <div className="samples-header">
-            <h3>
-              <Sparkles size={16} style={{ color: 'var(--accent-cyan)' }} />
-              <span>Or test instantly with pre-built candidate samples:</span>
-            </h3>
-            <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-              1-click evaluation
-            </span>
-          </div>
-
-          <div className="samples-grid">
-            {SAMPLE_RESUMES.map(sample => {
-              const isPass = sample.expectedStatus.toLowerCase().includes('pass');
-              return (
-                <div key={sample.id} className="sample-card">
-                  <div>
-                    <div className="sample-top">
-                      <div className="sample-title">{sample.title}</div>
-                      <span className={`sample-status-pill ${isPass ? 'pass' : 'needswork'}`}>
-                        {sample.expectedStatus}
-                      </span>
-                    </div>
-                    <p className="sample-desc">{sample.summary}</p>
-                  </div>
-
-                  <div className="sample-actions">
-                    <button
-                      type="button"
-                      className="btn-sample-run"
-                      onClick={() => onSubmitSample(sample, selectedRole)}
-                    >
-                      <span>Run Evaluation</span>
-                      <ChevronRight size={15} />
-                    </button>
-                    <a
-                      href={`/sample-files/${sample.fileName}`}
-                      download
-                      className="btn-sample-download"
-                      title={`Download ${sample.fileName}`}
-                      aria-label={`Download ${sample.fileName}`}
-                      onClick={(e) => {
-                        // Check if file exists, else prevent error
-                      }}
-                    >
-                      <Download size={15} />
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       </div>
     </div>

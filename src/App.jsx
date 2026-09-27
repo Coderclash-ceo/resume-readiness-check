@@ -3,7 +3,8 @@ import { rubrics } from './rubrics/index.js';
 import UploadScreen from './components/UploadScreen.jsx';
 import LoadingState from './components/LoadingState.jsx';
 import ResultScreen from './components/ResultScreen.jsx';
-import { FileCheck, Sparkles, Shield, Cpu, RefreshCw } from 'lucide-react';
+import { FileCheck, Sparkles, Shield, Cpu, RefreshCw, ArrowLeft } from 'lucide-react';
+
 import './styles.css';
 
 export default function App() {
@@ -46,40 +47,6 @@ export default function App() {
     }
   };
 
-  // Sample resume test handler
-  const handleRunSample = async (sample, roleId) => {
-    setCurrentStep('loading');
-    setActiveFileName(sample.fileName);
-    setErrorMessage('');
-
-    try {
-      const response = await fetch('/api/check', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          role: roleId,
-          fileName: sample.fileName,
-          text: sample.text,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to process sample resume.');
-      }
-
-      setEvaluationResult(data);
-      setCurrentStep('result');
-    } catch (err) {
-      console.error('Sample evaluation failed:', err);
-      setErrorMessage(err.message || 'An error occurred while evaluating the sample.');
-      setCurrentStep('upload');
-    }
-  };
-
   const handleReset = () => {
     setEvaluationResult(null);
     setErrorMessage('');
@@ -102,6 +69,17 @@ export default function App() {
           </div>
 
           <div className="nav-meta">
+            {currentStep !== 'upload' && (
+              <button
+                type="button"
+                className="nav-back-button"
+                onClick={handleReset}
+                id="btn-nav-back"
+              >
+                <ArrowLeft size={15} />
+                <span>Back to Upload</span>
+              </button>
+            )}
             <div className="status-indicator">
               <span className="status-dot"></span>
               <span>{activeRubric.role} Checklist</span>
@@ -118,7 +96,6 @@ export default function App() {
             selectedRole={selectedRole}
             onSelectRole={setSelectedRole}
             onSubmitFile={handleUploadFile}
-            onSubmitSample={handleRunSample}
             errorMessage={errorMessage}
           />
         )}
@@ -127,6 +104,7 @@ export default function App() {
           <LoadingState
             roleName={activeRubric.role}
             fileName={activeFileName}
+            onCancel={handleReset}
           />
         )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, FileSearch, CheckCircle2, Cpu } from 'lucide-react';
 
-export default function LoadingState({ roleName, fileName }) {
+export default function LoadingState({ roleName, fileName, onCancel }) {
   const [stepIndex, setStepIndex] = useState(0);
 
   const steps = [
@@ -58,6 +58,17 @@ export default function LoadingState({ roleName, fileName }) {
           );
         })}
       </div>
+
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn-secondary"
+          style={{ marginTop: '1.5rem', fontSize: '0.85rem', padding: '0.5rem 1rem' }}
+        >
+          Cancel & Return to Upload
+        </button>
+      )}
     </div>
   );
 }
