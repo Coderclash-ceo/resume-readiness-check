@@ -15,21 +15,25 @@ export const config = {
  */
 async function extractTextFromPdf(buffer) {
   try {
-    const pdfModule = await import('pdf-parse');
-    // Handle both v1 function export and v2 PDFParse class export
-    if (typeof pdfModule.default === 'function') {
-      const data = await pdfModule.default(buffer);
+    let pdfFn;
+    try {
+      // Direct import of lib bypasses pdf-parse's debug test file check
+      const mod = await import('pdf-parse/lib/pdf-parse.js');
+      pdfFn = mod.default || mod;
+    } catch {
+      const mod = await import('pdf-parse');
+      pdfFn = mod.default || mod;
+    }
+
+    if (typeof pdfFn === 'function') {
+      const data = await pdfFn(buffer);
       return data.text || '';
     }
-    if (pdfModule.PDFParse) {
-      const parser = new pdfModule.PDFParse({ data: buffer });
+    if (pdfFn && pdfFn.PDFParse) {
+      const parser = new pdfFn.PDFParse({ data: buffer });
       const res = await parser.getText();
       await parser.destroy?.();
       return typeof res === 'string' ? res : (res?.text || '');
-    }
-    if (typeof pdfModule === 'function') {
-      const data = await pdfModule(buffer);
-      return data.text || '';
     }
     throw new Error('Unable to initialize pdf-parse');
   } catch (err) {
