@@ -283,7 +283,8 @@ Return ONLY valid JSON:
  * Calls the configured LLM API (OpenAI, Anthropic, or Gemini)
  */
 async function callLlmEvaluator(prompt, rubric) {
-  const apiKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY;
+  const rawKey = process.env.LLM_API_KEY || process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY || process.env.GEMINI_API_KEY || '';
+  const apiKey = rawKey.trim();
 
   if (!apiKey) {
     return null; // Will trigger local heuristic evaluation
@@ -291,7 +292,7 @@ async function callLlmEvaluator(prompt, rubric) {
 
   // 1. Anthropic Claude (if key starts with sk-ant or ANTHROPIC_API_KEY is present)
   if (apiKey.startsWith('sk-ant') || process.env.ANTHROPIC_API_KEY) {
-    const antKey = process.env.ANTHROPIC_API_KEY || apiKey;
+    const antKey = (process.env.ANTHROPIC_API_KEY || apiKey).trim();
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -321,9 +322,9 @@ async function callLlmEvaluator(prompt, rubric) {
     return { ...JSON.parse(cleanJson), provider: 'Anthropic Claude' };
   }
 
-  // 2. Google Gemini (if key starts with AIza or GEMINI_API_KEY is present)
-  if (apiKey.startsWith('AIza') || process.env.GEMINI_API_KEY) {
-    const geminiKey = process.env.GEMINI_API_KEY || apiKey;
+  // 2. Google Gemini (if key starts with AIza or AQ or GEMINI_API_KEY is present)
+  if (apiKey.startsWith('AIza') || apiKey.startsWith('AQ') || process.env.GEMINI_API_KEY) {
+    const geminiKey = (process.env.GEMINI_API_KEY || apiKey).trim();
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
     const response = await fetch(url, {
       method: 'POST',
@@ -347,36 +348,42 @@ async function callLlmEvaluator(prompt, rubric) {
     return { ...JSON.parse(rawText), provider: 'Google Gemini' };
   }
 
-  // 3. OpenAI (standard OpenAI key sk-...)
-  const openAiKey = process.env.OPENAI_API_KEY || apiKey;
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${openAiKey}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      temperature: 0.1,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are an expert technical resume reviewer. Return strictly valid JSON containing matched and missing skill lists.'
-        },
-        { role: 'user', content: prompt }
-      ]
-    })
-  });
+  // 3. OpenAI (if key starts with sk- or OPENAI_API_KEY is present)
+  if (apiKey.startsWith('sk-') || process.env.OPENAI_API_KEY) {
+    const openAiKey = (process.env.OPENAI_API_KEY || apiKey).trim();
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert technical resume reviewer. Return strictly valid JSON containing matched and missing skill lists.'
+          },
+          { role: 'user', content: prompt }
+        ]
+      })
+    });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    throw new Error(`OpenAI API error (${response.status}): ${errText}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenAI API error (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    const rawText = data.choices?.[0]?.message?.content || '{}';
+    return { ...JSON.parse(rawText), provider: 'OpenAI GPT-4o' };
   }
 
-  const data = await response.json();
-  const rawText = data.choices?.[0]?.message?.content || '{}';
-  return { ...JSON.parse(rawText), provider: 'OpenAI GPT-4o' };
+  // Unrecognized key format -> return null to gracefully use local heuristic engine
+  console.warn('[ResumeCheck] Unrecognized API key format, falling back to local heuristic engine.');
+  return null;
 }
 
 /**

@@ -96,14 +96,42 @@ const jordanLines = [
   '- Implemented interactive UI components with plain JavaScript.'
 ];
 
+// 3. Priya Sharma (Backend)
+const priyaLines = [
+  'PRIYA SHARMA - BACKEND SOFTWARE ENGINEER',
+  'Seattle, WA | priya.sharma@email.com',
+  '',
+  'SUMMARY',
+  'Backend engineer with 3+ years specializing in distributed systems, Java backend architectures, SQL databases, and RESTful API services.',
+  '',
+  'TECHNICAL SKILLS',
+  '- Backend Languages: Java, Node.js, SQL, Python',
+  '- Frameworks: Spring Boot, Express, REST APIs, Hibernate',
+  '- Databases: PostgreSQL, MySQL, Redis, MongoDB',
+  '- Infrastructure: Git, GitHub, Docker, AWS hosting, Linux, CI/CD',
+  '- Testing: JUnit, Jest, integration testing',
+  '',
+  'EXPERIENCE',
+  'Backend Developer at FinTech Nexus (2022 - Present)',
+  '- Built and maintained resilient Java Spring Boot backend services and Node.js microservices.',
+  '- Designed relational schemas and executed complex queries in PostgreSQL and SQL Server.',
+  '- Developed secure REST APIs with token-based authentication and rate limiting.',
+  '- Automated code reviews and pull request validations using Git and GitHub workflows.',
+  '- Deployed microservices into production containers on AWS hosting infrastructure.',
+  '- Authored extensive unit tests with JUnit and integration tests for critical payment endpoints.'
+];
+
 async function generate() {
   const alexPdf = await createStandardPdf(alexLines);
   const jordanPdf = await createStandardPdf(jordanLines);
+  const priyaPdf = await createStandardPdf(priyaLines);
 
   fs.writeFileSync(path.join(outDir, 'alex-morgan-senior-fullstack.pdf'), alexPdf);
   fs.writeFileSync(path.join(outDir, 'jordan-lee-junior-frontend.pdf'), jordanPdf);
+  fs.writeFileSync(path.join(outDir, 'priya-sharma-backend.pdf'), priyaPdf);
 
-  console.log('Generated spec-compliant PDFs with pdf-lib successfully!');
+  console.log('Generated spec-compliant PDFs for all 3 candidates successfully!');
 }
 
 generate().catch(console.error);
+

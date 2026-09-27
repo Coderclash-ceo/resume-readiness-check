@@ -48,7 +48,7 @@ Bachelor of Science in Computer Science | University of California, Berkeley | 2
     roleId: 'web-development',
     expectedStatus: 'Needs Work (~40%)',
     summary: 'Shows solid React, JavaScript, and Git fundamentals, but lacks backend Node.js, SQL, Testing, and Deployment evidence.',
-    fileName: 'jordan-lee-frontend.docx',
+    fileName: 'jordan-lee-junior-frontend.pdf',
     text: `JORDAN LEE
 Junior Frontend Developer
 Austin, TX | jordan.lee@email.com | github.com/jordanlee-web
